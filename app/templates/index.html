@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student AI Chatbot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="main-layout">
+        <aside class="sidebar">
+            <button id="new-chat-btn" class="new-chat-btn">+ New Chat</button>
+            <div class="sidebar-header">
+                <h2>History</h2>
+            </div>
+            <ul id="chat-history" class="chat-history"></ul>
+        </aside>
+
+        <div class="chat-container">
+            <header>
+                <h1>Student AI</h1>
+                <p>Your personal student assistant chatbot</p>
+            </header>
+
+            <!-- Upload -->
+            <div id="upload-status" style="margin: 8px 0; color: #2a4d9b;"></div>
+            <form id="upload-form" enctype="multipart/form-data" style="margin: 16px;">
+                <input type="file" id="file-input" name="file" accept=".pdf">
+                <button type="submit">Upload PDF</button>
+            </form>
+
+            <div id="chat-box" class="chat-box"></div>
+
+            <!-- Chat -->
+            <form id="chat-form" autocomplete="off">
+                <input type="text" id="user-input" placeholder="Type your question..." required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        Built with ❤️ by Ankit Yadav
+    </footer>
+</body>
+
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatHistory = document.getElementById('chat-history');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+
+        // ---------------------------
+        // PDF Upload
+        // ---------------------------
+        uploadForm.onsubmit = async (e) => {
+            e.preventDefault();
+
+            if (!fileInput.files.length) {
+                alert("Please select a PDF file first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.textContent = "Uploading...";
+
+            const res = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                statusDiv.textContent = "Upload successful!";
+            } else {
+                statusDiv.textContent = "Upload failed!";
+                alert(data.error || "Upload failed");
+            }
+
+            fileInput.value = '';
+        };
+
+        // ---------------------------
+        // Chat (RAG)
+        // ---------------------------
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            appendMessage('You', message);
+            userInput.value = '';
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+
+            const data = await response.json();
+            appendMessage('Student AI', data.response || data.error);
+
+            loadAllHistories();
+        });
+
+        function appendMessage(sender, message) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = sender === 'You' ? 'user-message' : 'bot-message';
+            msgDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // ---------------------------
+        // Chat History
+        // ---------------------------
+        async function loadAllHistories() {
+            const res = await fetch('/history');
+            const histories = await res.json();
+
+            chatHistory.innerHTML = '';
+            Object.entries(histories).forEach(([chatId, messages]) => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.textContent = messages[0]?.user
+                    ? messages[0].user.slice(0, 30) + '...'
+                    : 'New Chat';
+
+                li.onclick = () => loadHistoryById(chatId);
+                chatHistory.appendChild(li);
+            });
+        }
+
+        async function loadHistoryById(chatId) {
+            const res = await fetch('/history');
+            const histories = await res.json();
+
+            chatBox.innerHTML = '';
+            if (histories[chatId]) {
+                histories[chatId].forEach(item => {
+                    appendMessage('You', item.user);
+                    appendMessage('Student AI', item.bot);
+                });
+            }
+        }
+
+        newChatBtn.onclick = async () => {
+            await fetch('/new_chat', { method: 'POST' });
+            chatBox.innerHTML = '';
+            loadAllHistories();
+        };
+
+        // On page load
+appendMessage(
+    'Student AI',
+    '👋 Hi! I’m Student AI. Upload a document and ask me questions about it. I’ll answer using only the document content.'
+);
+loadAllHistories();
+
+    </script>
+</body>
+</html>

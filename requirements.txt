@@ -1,0 +1,44 @@
+# -------------------------
+# Core Python
+# -------------------------
+python-dotenv
+tf-keras
+# -------------------------
+# Web Framework
+# -------------------------
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+gunicorn
+
+# -------------------------
+# RAG – PDF & Media
+# -------------------------
+PyPDF2
+pymupdf
+Pillow
+
+# -------------------------
+# RAG – NLP & Embeddings
+# -------------------------
+langchain
+langchain-community
+sentence-transformers
+nltk
+
+# -------------------------
+# Vector Search
+# -------------------------
+faiss-cpu
+
+# -------------------------
+# HTTP & Utilities
+# -------------------------
+requests
+numpy
+pandas
+
+# -------------------------
+# YAML Configs
+# -------------------------
+pyyaml
