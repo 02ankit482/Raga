@@ -1,10 +1,29 @@
+import shutil
 from flask import Flask
+from flask_session import Session
 from app.main.routes import main
 
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "dev-secret-key"  # change later for prod
-    app.config["RESET_CHAT_ON_STARTUP"] = True
+
+    app.secret_key = "dev-secret-key"
+
+    SESSION_DIR = "/tmp/flask_sessions"
+
+    # HARD RESET SESSIONS ON APP START
+    shutil.rmtree(SESSION_DIR, ignore_errors=True)
+
+    UPLOAD_DIR = "uploads"
+#  STEP 3: CLEAR UPLOADED DOCUMENTS ON APP START
+    shutil.rmtree(UPLOAD_DIR, ignore_errors=True)
+
+    app.config["SESSION_TYPE"] = "filesystem"
+    app.config["SESSION_FILE_DIR"] = SESSION_DIR
+    app.config["SESSION_PERMANENT"] = False
+    app.config["SESSION_USE_SIGNER"] = True
+
+    Session(app)
+
     app.register_blueprint(main)
     return app

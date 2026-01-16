@@ -16,6 +16,17 @@ main = Blueprint('main', __name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
 
+@main.before_app_request
+def initialize_session():
+    if "chat_sessions" not in session:
+        session["chat_sessions"] = {}
+
+    if "current_chat" not in session:
+        chat_id = str(uuid.uuid4())
+        session["current_chat"] = chat_id
+        session["chat_sessions"][chat_id] = []
+
+
 def build_chat_context(chat_history, max_turns=max_history_turns):
     """
     Build conversational context from previous turns.
