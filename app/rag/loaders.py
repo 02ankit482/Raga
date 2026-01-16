@@ -4,7 +4,8 @@ from PIL import Image
 import io
 from typing import List, Tuple
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 from app.rag.constants import (
     CHUNK_SIZE,

@@ -21,6 +21,7 @@ Pillow
 # -------------------------
 # RAG – NLP & Embeddings
 # -------------------------
+langchain-text-splitters
 langchain
 langchain-community
 sentence-transformers
