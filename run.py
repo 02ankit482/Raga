@@ -42,7 +42,8 @@ def main():
         debug = args.debug
 
     print(f"🚀 Starting app on http://{args.host}:{args.port} (debug={debug})")
-    app.run(host=args.host, port=args.port, debug=debug)
+    app.run(host="0.0.0.0", port=args.port, debug=debug)
+
 
 
 if __name__ == "__main__":
