@@ -67,7 +67,7 @@ def create_structure(base_path, structure):
                 with open(path, "w", encoding="utf-8") as f:
                     if name.endswith(".py"):
                         f.write(
-                            f'"""\n{name}\nAuto-generated file.\n"""\n\n'
+                            f'"""\n{name}\blank file.\n"""\n\n'
                         )
             else:
                 print(f"Skipping existing file: {path}")
@@ -77,4 +77,4 @@ if __name__ == "__main__":
     root_dir = os.getcwd()
     print(f"Creating project structure in: {root_dir}")
     create_structure(root_dir, PROJECT_STRUCTURE)
-    print("✅ Project structure created successfully.")
+    print(" Project structure created successfully.")
