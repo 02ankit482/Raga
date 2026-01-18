@@ -1,5 +1,5 @@
 """
 schemas.py
-Auto-generated file.
+blank file.
 """
 
