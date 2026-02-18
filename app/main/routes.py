@@ -1,23 +1,39 @@
-from flask import Blueprint, render_template, request, jsonify, session
+from flask import Blueprint, render_template, request, jsonify, session, current_app
 import uuid
 import os
+import time
 from werkzeug.utils import secure_filename
 from app.rag.constants import max_history_turns
 from app.rag.pipeline import run_rag
 from app.logger import setup_logger
-from flask import current_app
 
+# Blueprint
+main = Blueprint('main', __name__)
+
+# Logger
 
 app_logger = setup_logger("app", "logs/app.log")
 
 
-main = Blueprint('main', __name__)
+# Config
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
 
+# Activity Tracker
+
+def update_last_activity():
+    with open("/tmp/last_request.txt", "w") as f:
+        f.write(str(time.time()))
+
+# Global Request Hook
+
 @main.before_app_request
-def initialize_session():
+def global_before_request():
+    # Track last activity
+    update_last_activity()
+
+    # Initialize session safely
     if "chat_sessions" not in session:
         session["chat_sessions"] = {}
 
@@ -26,12 +42,15 @@ def initialize_session():
         session["current_chat"] = chat_id
         session["chat_sessions"][chat_id] = []
 
+    # Reset session once per server start
+    if current_app.config.get("RESET_CHAT_ON_STARTUP"):
+        session.clear()
+        current_app.config["RESET_CHAT_ON_STARTUP"] = False
+
+
+# Helper: Build Conversational Context
 
 def build_chat_context(chat_history, max_turns=max_history_turns):
-    """
-    Build conversational context from previous turns.
-    Uses last `max_turns` interactions.
-    """
     context_lines = []
     for turn in chat_history[-max_turns:]:
         context_lines.append(f"User: {turn['user']}")
@@ -39,32 +58,22 @@ def build_chat_context(chat_history, max_turns=max_history_turns):
     return "\n".join(context_lines)
 
 
+# Helper: Validate File
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@main.before_app_request
-def reset_chat_on_startup():
-    """
-    Clears chat session once per server start.
-    """
-    if current_app.config.get("RESET_CHAT_ON_STARTUP"):
-        session.clear()
-        current_app.config["RESET_CHAT_ON_STARTUP"] = False
+
+# Routes
 
 
 @main.route('/')
 def index():
-    if 'chat_sessions' not in session:
-        session['chat_sessions'] = {}
-    if 'current_chat' not in session:
-        session['current_chat'] = str(uuid.uuid4())
-        session['chat_sessions'][session['current_chat']] = []
     return render_template('index.html')
 
 
 @main.route('/chat', methods=['POST'])
 def chat():
-    # ---- ALWAYS initialize first ----
     chat_id = session.get('current_chat')
 
     if not chat_id:
@@ -85,12 +94,14 @@ def chat():
         app_logger.warning("Empty message received")
         return jsonify({'response': 'Please enter a valid message.'})
 
-    # ---- File checks ----
+
+    # Document Validation
+
     if not os.path.exists(UPLOAD_FOLDER):
         app_logger.warning("Upload folder not found")
         return jsonify({
-    'response': '📄 Please upload a document first so I can help you with it.'
-})
+            'response': '📄 Please upload a document first so I can help you with it.'
+        })
 
     files = [
         f for f in os.listdir(UPLOAD_FOLDER)
@@ -99,7 +110,9 @@ def chat():
 
     if not files:
         app_logger.warning("No documents uploaded")
-        return jsonify({'response': 'Please upload a document first.'})
+        return jsonify({
+            'response': '📄 Please upload a document first so I can help you with it.'
+        })
 
     latest_file = max(
         files,
@@ -109,7 +122,9 @@ def chat():
     pdf_path = os.path.join(UPLOAD_FOLDER, latest_file)
     app_logger.info(f"Running RAG on file: {latest_file}")
 
-    # ---- Conversational memory ----
+
+    # Conversational Memory
+
     chat_history = session['chat_sessions'][chat_id]
     conversation_context = build_chat_context(chat_history)
 
@@ -121,18 +136,17 @@ def chat():
     else:
         enhanced_query = user_message
 
-    # ---- RAG ----
+    # Run RAG
     try:
         rag_output = run_rag(
             pdf_path=pdf_path,
             query=enhanced_query
         )
         bot_response = rag_output["result"]
-    except Exception as e:
+    except Exception:
         app_logger.exception("RAG pipeline failed")
         return jsonify({'response': 'An internal error occurred. Please try again.'})
-
-    # ---- Save chat ----
+    # Save Chat History
     session['chat_sessions'][chat_id].append({
         'user': user_message,
         'bot': bot_response
@@ -140,14 +154,13 @@ def chat():
     session.modified = True
 
     app_logger.info("Chat response sent successfully")
-    return jsonify({'response': bot_response})
 
+    return jsonify({'response': bot_response})
 
 
 @main.route('/history', methods=['GET'])
 def history():
-    chat_sessions = session.get('chat_sessions', {})
-    return jsonify(chat_sessions)
+    return jsonify(session.get('chat_sessions', {}))
 
 
 @main.route('/new_chat', methods=['POST'])
@@ -173,6 +186,7 @@ def upload_file():
         filename = secure_filename(file.filename)
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         file.save(os.path.join(UPLOAD_FOLDER, filename))
+        app_logger.info(f"File uploaded: {filename}")
         return jsonify({'success': True, 'filename': filename})
-    app_logger.info(f"File uploaded: {filename}")
+
     return jsonify({'error': 'Invalid file type'}), 400
