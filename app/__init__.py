@@ -1,5 +1,5 @@
 import shutil
-from time import time
+import time
 from flask import Flask
 from flask_session import Session
 from app.main.routes import main
