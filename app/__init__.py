@@ -1,4 +1,5 @@
 import shutil
+from time import time
 from flask import Flask
 from flask_session import Session
 from app.main.routes import main
@@ -24,6 +25,11 @@ def create_app():
     app.config["SESSION_USE_SIGNER"] = True
 
     Session(app)
+
+    @app.before_request
+    def track_activity():
+        with open("/tmp/last_request.txt", "w") as f:
+            f.write(str(time.time()))
 
     app.register_blueprint(main)
     return app

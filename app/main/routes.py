@@ -20,19 +20,10 @@ app_logger = setup_logger("app", "logs/app.log")
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
 
-# Activity Tracker
-
-def update_last_activity():
-    with open("/tmp/last_request.txt", "w") as f:
-        f.write(str(time.time()))
-
 # Global Request Hook
 
 @main.before_app_request
 def global_before_request():
-    # Track last activity
-    update_last_activity()
-
     # Initialize session safely
     if "chat_sessions" not in session:
         session["chat_sessions"] = {}
