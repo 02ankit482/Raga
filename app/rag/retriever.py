@@ -1,16 +1,18 @@
 from typing import List, Tuple
 
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+
 
 from app.rag.constants import (
     EMBEDDING_MODEL_NAME,
     TOP_K,
 )
 
-_embedding_fn = SentenceTransformerEmbeddings(
-    model_name=EMBEDDING_MODEL_NAME
+_embedding_fn = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
+
 
 
 def build_vectorstore(texts: List[str]) -> FAISS:
